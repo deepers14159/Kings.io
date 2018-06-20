@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <title>Text Adventure</title>
+    <script type="text/javascript" src="story.js"></script>
+    <script type="text/javascript">
+       
+        var ctx;
+        var playLoop;
+        var fps = 60;
+        var canvasH;
+        var canvasW;
+        var up = false;
+        var down = false;
+        var left = false;
+        var right = false;
+        var space = false;
+        var mouse = false;
+        var mouseX;
+        var mouseY;
+        var game = {transparency : 1, thickness : 20, start : 0, ani : 3, mouseScroll : 0, textSize : 15};
+        var boxes = [];
+        var chatInfo = {size: 0, lastY: 0, mouseOn : -1, yAnimation : 0, aniPower : 0};
+        var inventory = {size : 0};
+        var items = [];
+		var death = false;
+		var open = 1;
+        var scroll = {y : 0, percent : 1};
+		var scroll2 = {x : 0, percent : 1};
+        var answers = {openQ : 0, openA: -1};
+        
+        var theme = {logBorder : "#355692", shadow : "#313040", box : "#ABA8B2", answerBox : "#ff8080", answerBoxSelect : "#80ff80", logBack :"#646465", inventBox :  "#4E4E4F"};
+        var colors = {death : "#FF0000", mapBack : "#000000", reset : "#000000", fadeIn : "#000000", debugTest : "#FFFFFF", logBorder: theme.logBorder, logBorderShadow: theme.shadow, logBack : theme.logBack, box : theme.box, answerBox : theme.answerBox, answerBoxSelect : theme.answerBoxSelect, boxShadow : theme.shadow, boxText : "#000000", scrollBar : "#b3b3b3", scrollBox : "#595959", scrollBoxPressed : "#404040", scrollBoxShadow : theme.shadow, inventBox : theme.inventBox, grenText : "#134611", redText : "#FF0000"};
+        //var colors = {death : "#FF0000", mapBack : "#000000", reset : "#000000", fadeIn : "#000000", debugTest : "#FFFFFF", logBorder: "#4d0000", logBorderShadow: "#330000", logBack : "#333333", box : "#F  2C6A6", answerBox : "#ff8080", answerBoxSelect : "#80ff80", boxShadow : "#330000", boxText : "#000000", scrollBar : "#b3b3b3", scrollBox : "#595959", scrollBoxPressed : "#404040", scrollBoxShadow : "#330000", inventBox : "#262626"};
+        var score = {real : 400, ani : 400};
+        var storyEvents = {startStory : false};
+        var storyVars = {kingdomName : "unnamed"};
+        var stats = ["Popularity", "Sanity", "Cunning", "Honor", "Money", "Army"];
+        var statsValue = [50, 50, 50, 50, 10000, 50000];
+		var maxStatsValue = [100, 100, 100, 100, 100000, 500000];
+        var test = -1;
+        //min screen size = height : 500, width : 800
+		class text
+		{
+            constructor(type, text, yPos, qNumber, aNumber, color)
+            {
+                this.type = type; //'b' = reg box //'a' = answer box
+                this.text = text;
+                this.size = 0;
+                this.yPos = yPos;
+                this.aText =[0];
+                this.qNumber = qNumber;
+                this.aNumber = aNumber;
+                this.selected = 0;
+                this.aniTrans = 0;
+                this.color = color;
+            }
+		}
+        class inventItem
+        {
+           constructor(name, imgId)
+            {
+                this.name = name;
+				this.imgId = imgId;
+                this.number = 0;
+                this.aName = [];
+                this.size = 0;
+            }
+        }
+        function reset() 
+        {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = colors.reset;
+            ctx.fillRect(0, 0, canvasW, canvasH);
+            ctx.globalAlpha = game.transparency;
+        }
+        function draw() 
+        {
+            update();
+            reset();
+            drawMap();
+            //drawScore();
+            drawInfo();
+			drawLog();
+            drawDeath();
+			//drawDebug();
+			
+        }
+        function drawStats()
+        {
+            var thickness = game.thickness;
+            var maxW = canvasW/2 - 3*thickness;
+            var wInverval = (maxW)/2;
+            var maxH= canvasH/2 - 3/2*thickness;
+            var hInverval = (maxH)/3;
+            for(var i = 0; i < 2 ; i++)
+                {
+                    for(var j = 0; j < 3 ; j++)
+                        {
+                            ctx.globalAlpha = game.transparency; 
+                            ctx.fillStyle = colors.boxShadow;
+                            ctx.fillRect(5/2*thickness + i * wInverval,2/2*thickness + j * hInverval + canvasH/2, wInverval - thickness, hInverval - thickness);
+                        }
+                }
+            for(var i = 0; i < 2 ; i++)
+                {
+                    for(var j = 0; j < 3 ; j++)
+                        {
+                            ctx.globalAlpha = game.transparency; 
+                            ctx.fillStyle = colors.box;
+                            ctx.fillRect(4/2*thickness + i * wInverval,1/2*thickness + j * hInverval + canvasH/2, wInverval - thickness, hInverval - thickness);
+                            //text background
+                            ctx.globalAlpha = 0.8; 
+                            ctx.fillStyle = "#4d4d4d";
+                            ctx.fillRect(4/2*thickness + i * wInverval,1/2*thickness + j * hInverval + canvasH/2, wInverval - thickness, hInverval - thickness);
+                             ctx.globalAlpha = game.transparency; 
+                            //text
+                             ctx.font = '15px Verdana';
+                            ctx.fillStyle = "#FFFFFF";
+                            ctx.globalAlpha = 0.8; 
+                            ctx.fillText(stats[2*j + i] + ": " + statsValue[2*j + i] + " / " + maxStatsValue[2*j + i], 6/2*thickness + i * wInverval,5/2*thickness + j * hInverval + canvasH/2, wInverval - 2*thickness);
+                            ctx.globalAlpha = game.transparency; 
+                        }
+                }
+        }
+        function drawDeath()
+        {
+            if(death == true)
+                {
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = colors.reset;
+                    ctx.fillRect(0, 0, canvasW/2, canvasH);
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = colors.death;
+                    ctx.fillRect(0, 0, canvasW, canvasH);
+                    ctx.globalAlpha = 1;
+                    ctx.font = '50px Copperplate Gothic Light';
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillText("You lose!", canvasW/2 - 600, canvasH/2 - 60);
+                    ctx.font = '30px Copperplate Gothic Light';
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillText("Too much social awkwardness for one day...", canvasW/2 - 600, canvasH/2 + 25);
+                }
+        }
+		function drawDebug()
+		{
+			ctx.font = '15px Verdana';
+            ctx.fillStyle = colors.debugTest;
+            ctx.fillText("test: " + test, canvasW/2 + 50, 50);
+        }
+        function drawMap()
+        {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = colors.mapBack;
+            ctx.fillRect(0, 0, canvasW/2, canvasH);
+            ctx.globalAlpha = game.transparency; 
+        }
+        function drawInfo()
+        {
+            //back
+            ctx.fillStyle = colors.logBack;
+            ctx.fillRect(0, 0, canvasW/2, canvasH);
+            
+            //Stuff on top
+            drawInventory();
+            drawStats();
+            var thickness = game.thickness;
+            
+            //shadow
+            ctx.globalAlpha = game.transparency*0.9; 
+            ctx.fillStyle = colors.logBorderShadow;
+            ctx.fillRect(0, 0, canvasW/2, thickness*1.5);
+            ctx.fillRect(0, 0, thickness*1.5, canvasH);
+            ctx.globalAlpha = game.transparency; 
+            //border
+            ctx.fillStyle = colors.logBorder;
+            ctx.fillRect(0, 0, canvasW/2, thickness);
+            ctx.fillRect(0, 0, thickness, canvasH);
+            ctx.fillRect(0, canvasH - thickness, canvasW/2, thickness);
+            ctx.fillRect(canvasW/2 - thickness, 0, thickness, canvasH);
+        }
+        function drawInventory()
+        {
+            var thickness = 0.6;
+            ctx.fillStyle = colors.inventBox;
+            ctx.fillRect((thickness/2)*3, (thickness/2)*3, canvasW/2 - (thickness/2)*5, canvasH/2 - (thickness/2)*3);
+            drawItems();
+        }
+        function drawItems()
+        {
+			drawScroll2();
+            var thickness = game.thickness;
+            var xPos = 0;
+            var width = canvasH/2 - (thickness/2)*14;
+            var maxWidth = (width + thickness)*(inventory.size);
+            var scrollAmount = maxWidth * scroll2.percent;
+            for(var i = inventory.size - 1; i > -1; i = i - 1)
+                {
+                     drawInventBox(xPos - scrollAmount, i);
+                     xPos = xPos + width + thickness;
+                }
+        }
+        function drawInventBox(x, itemNum)
+        {
+            var thickness = game.thickness;
+            var box = 
+                {
+                    startX : (thickness/2)*5 + x,
+                    startY : (thickness/2)*5,
+                    width : canvasH/2 - (thickness/2)*14,
+                    height : canvasH/2 - (thickness/2)*14,
+                    shadow : thickness/2,
+                    textStartX : (thickness/2)*7,
+                    textMaxW: canvasH/2 - (thickness/2)*18
+                };
+            
+            //Shadow
+            ctx.globalAlpha = 0.9; 
+            ctx.fillStyle = colors.boxShadow;
+            ctx.fillRect(box.startX + box.shadow, box.startY + box.shadow, box.width, box.height);
+            
+            //Box
+            ctx.globalAlpha = game.transparency;
+            ctx.fillStyle = colors.box;
+            ctx.fillRect(box.startX, box.startY, box.width, box.height);
+            
+            //Image
+			var img = document.getElementById(items[itemNum].imgId);
+			ctx.drawImage(img,box.startX + thickness,box.startY + thickness,box.width - 2*thickness,box.height - 2*thickness);
+            
+            //Count Box
+            var digits = 0;
+            var num = items[itemNum].number;
+            while(num >= 1)
+                {
+                    digits++;
+                    num = num/10;
+                }
+            ctx.globalAlpha = 0.8; 
+            ctx.fillStyle = "#4d4d4d";
+            ctx.fillRect(box.startX + box.width - 9*(digits +2), box.startY, 9*(digits +2), game.textSize + 2*(thickness/4));
+            ctx.globalAlpha = game.transparency; 
+            
+            //Count Text
+            ctx.font = '15px Verdana';
+            ctx.fillStyle = "#FFFFFF";
+            ctx.globalAlpha = 0.8; 
+            ctx.fillText(items[itemNum].number, box.startX + box.width - 9*(digits +1), box.startY + thickness/4 + game.textSize*3/4);
+            ctx.globalAlpha = game.transparency; 
+            
+            //Name Box
+            ctx.globalAlpha = 0.8 
+            ctx.fillStyle = "#4d4d4d";
+            ctx.fillRect(box.startX, box.startY + box.height - (17*items[itemNum].size + thickness), box.width, (17*items[itemNum].size + thickness));
+            ctx.globalAlpha = game.transparency; 
+            
+            //Name Text
+            for(var i = 0; i < items[itemNum].size; i++)
+                {
+                    ctx.font = '15px Verdana';
+                    ctx.fillStyle = "#FFFFFF";
+                     ctx.globalAlpha = 0.8; 
+                    ctx.fillText(items[itemNum].aName[i], box.startX + thickness/2, box.startY + box.height - (17*items[itemNum].size + thickness/2) + i*17 + thickness/2, box.textMaxW);
+                }
+            ctx.globalAlpha = game.transparency; 
+        }
+		function drawScroll2()
+		{
+			var thickness = game.thickness;
+            //var lowX = canvasW - (11*thickness)/4;
+            //var highX = lowX + thickness;
+            var highY = canvasH/2 - (11*thickness)/4;
+            var lowY =  canvasH/2 - (11*thickness)/4 +  thickness;
+            var mouseDown = 1;
+            if(mouse==true&&mouseY>lowY-50&&mouseY<highY+50&&mouseX < canvasW/2)
+                mouseDown = 0;
+            
+			//Bar
+            ctx.fillStyle = colors.scrollBar;
+            ctx.fillRect(thickness*3, canvasH/2 - (11*thickness)/4, canvasW/2 - 6*thickness,  thickness);
+            
+            //Shadow of Move
+            ctx.globalAlpha = game.transparency; 
+            ctx.fillStyle = colors.scrollBoxShadow;
+            ctx.fillRect(thickness*3 + scroll2.x,  canvasH/2 - (12*thickness)/4 , thickness, (3*thickness)/2 );
+            
+            //Move
+            ctx.globalAlpha = game.transparency; 
+            ctx.fillStyle = colors.scrollBox;
+            if(mouseDown == 0)
+                ctx.fillStyle = colors.scrollBoxPressed;
+            ctx.fillRect(thickness*3 + scroll2.x - mouseDown*thickness/4,  canvasH/2 - (12*thickness)/4 - mouseDown*thickness/4, thickness, (3*thickness)/2);
+			
+		}
+        function drawLog()
+        {
+            //back
+            ctx.fillStyle = colors.logBack;
+            ctx.fillRect(canvasW/2, 0, canvasW/2, canvasH);
+            
+            //Chat
+            thickness = game.thickness;
+            drawChat(thickness);
+            
+            //shadow
+            ctx.globalAlpha = game.transparency*0.9; 
+            ctx.fillStyle = colors.logBorderShadow;
+            ctx.fillRect(canvasW/2, 0, canvasW/2, thickness*1.5);
+            ctx.fillRect(canvasW/2, 0, thickness*1.5, canvasH);
+            ctx.globalAlpha = game.transparency; 
+            //border
+            ctx.fillStyle = colors.logBorder;
+            ctx.fillRect(canvasW/2, 0, canvasW/2, thickness);
+            ctx.fillRect(canvasW/2, 0, thickness, canvasH);
+            ctx.fillRect(canvasW/2, canvasH - thickness, canvasW/2, thickness);
+            ctx.fillRect(canvasW - thickness, 0, thickness, canvasH);
+            
+			
+			//draw open
+			ctx.globalAlpha = open;
+            ctx.fillStyle = colors.fadeIn;
+            ctx.fillRect(0, 0, canvasW, canvasH);
+            ctx.globalAlpha = game.transparency; 
+			open = open -0.01;
+            if(open<0)
+                open = 0;  
+        }
+        function drawChat(thickness)
+        {
+            drawScroll();
+            var scrollAmount = (canvasH - 1*thickness) - (chatInfo.yAnimation) * (scroll.percent);
+			chatInfo.mouseOn = -1;
+            for(var x = 0; x < chatInfo.size; x++)
+                {
+                    if(boxes[x].yPos + scrollAmount > 3000 || boxes[x].yPos + scrollAmount < -2000)
+                        continue;
+					if(mouseY > boxes[x].yPos + scrollAmount&& mouseY < boxes[x].yPos + scrollAmount + 55 + 17 * boxes[x].size)
+						{
+							chatInfo.mouseOn = x;
+						}
+                    if(boxes[x].type == 'a')
+                        {
+                            drawBoxAnswer(boxes[x].yPos + scrollAmount, 55 + 17 * boxes[x].size, thickness, x);
+                        }
+                    if(boxes[x].type == 'b')
+                        {
+                            drawBox(boxes[x].yPos + scrollAmount, 55 + 17 * boxes[x].size, thickness, x);
+                        }
+                }
+        }
+        function drawBox(yPos, yHeight, thickness, x)
+        {
+            var box = 
+                {
+                    startX : canvasW/2 + 2*thickness,
+                    width : canvasW/2 - 6*thickness,
+                    shadow : thickness/2,
+                    textStartX : canvasW/2 + (7*thickness)/2,
+                    textMaxW: canvasW/2 - 8*thickness
+                };
+            //Regular Text Box
+            //shadow
+            if(!(boxes[x].aniTrans < game.transparency))
+                {
+                    ctx.globalAlpha = boxes[x].aniTrans*0.9; 
+                    ctx.fillStyle = colors.boxShadow;
+                    ctx.fillRect(box.startX + box.shadow, yPos + box.shadow, box.width, yHeight);
+                }
+            //box
+            ctx.globalAlpha = boxes[x].aniTrans;
+            ctx.fillStyle = colors.box;
+            ctx.fillRect(box.startX, yPos, box.width, yHeight);
+            //text
+            //ctx.font = '15pt Verdana';
+            for(var i = 0; i < boxes[x].size; i++)
+                {
+                    ctx.font = '15px Verdana';
+                    ctx.fillStyle = colors.boxText;
+                    if(boxes[x].color == "green")
+                        ctx.fillStyle = colors.grenText;
+                    if(boxes[x].color == "red")
+                        ctx.fillStyle = colors.redText;
+                    ctx.fillText(boxes[x].aText[i], box.textStartX, yPos + 2*thickness + i*17, box.textMaxW);
+                }
+            ctx.globalAlpha = game.transparency; 
+        }
+        function drawBoxAnswer(yPos, yHeight, thickness, x)
+        {
+            var answerBox = 
+                {
+                    startX : canvasW/2 + 2*thickness,
+                    width : canvasW/2 - 10*thickness,
+                    shadow : thickness/2,
+                    textStartX : canvasW/2 + (7*thickness)/2,
+                    textMaxW: canvasW/2 - 12*thickness
+                };
+            if(chatInfo.mouseOn == x && mouse == true && mouseX >answerBox.startX && mouseX<answerBox.startX +  answerBox.width) 
+			{
+                 if(answers.openQ == boxes[x].qNumber && answers.openA == 0)
+                    {
+                        answers.openA = boxes[x].aNumber;
+                        boxes[x].selected = 1;
+                    }
+			     //Answers
+				//shadow
+                if(!(boxes[x].aniTrans < game.transparency))
+                {
+				    ctx.globalAlpha = boxes[x].aniTrans*0.9; 
+				    ctx.fillStyle = colors.boxShadow;       
+				    ctx.fillRect(answerBox.startX + answerBox.shadow, yPos + thickness/2, answerBox.width, yHeight);
+                }
+				//box
+                ctx.globalAlpha = boxes[x].aniTrans;
+				ctx.fillStyle = colors.answerBox;
+                if(boxes[x].selected == 1)
+                    ctx.fillStyle = colors.answerBoxSelect;
+				ctx.fillRect(answerBox.startX + answerBox.shadow, yPos  + thickness/2, answerBox.width, yHeight);
+				//text
+				//ctx.font = '15pt Verdana';
+				for(var i = 0; i < boxes[x].size; i++)
+					{
+						ctx.font = '15px Verdana';
+						ctx.fillStyle = colors.boxText;
+						ctx.fillText(boxes[x].aText[i], answerBox.textStartX + answerBox.shadow, yPos + 2*thickness + i*17 + thickness/2, answerBox.textMaxW);
+					}
+                ctx.globalAlpha = game.transparency; 
+               
+			}
+			else
+			{
+				//Answers
+				//shadow
+                if(!(boxes[x].aniTrans < game.transparency))
+                {
+				    ctx.globalAlpha = boxes[x].aniTrans*0.9; 
+				    ctx.fillStyle = colors.boxShadow;
+				    ctx.fillRect(answerBox.startX + answerBox.shadow, yPos + thickness/2, answerBox.width, yHeight);
+                }
+				//box
+				ctx.globalAlpha = boxes[x].aniTrans;
+				ctx.fillStyle = colors.answerBox;
+                if(boxes[x].selected == 1)
+                    ctx.fillStyle = colors.answerBoxSelect;
+				ctx.fillRect(answerBox.startX, yPos, answerBox.width, yHeight);
+				//text
+				//ctx.font = '15pt Verdana';
+				for(var i = 0; i < boxes[x].size; i++)
+					{
+						ctx.font = '15px Verdana';
+						ctx.fillStyle = colors.boxText;
+						ctx.fillText(boxes[x].aText[i], answerBox.textStartX, yPos + 2*thickness + i*17, answerBox.textMaxW);
+					}
+                ctx.globalAlpha = game.transparency; 
+			}
+        }
+        function drawScroll()
+        {
+            var thickness = game.thickness;
+            var lowX = canvasW - (11*thickness)/4;
+            var highX = lowX + thickness;
+            //var highY = thickness*3;
+            //var lowY =  canvasH - 6*thickness;
+            var mouseDown = 1;
+            if(mouse==true&&mouseX>lowX-50&&mouseX<highX+30)
+                mouseDown = 0;
+        
+            //Bar
+            ctx.fillStyle = colors.scrollBar;
+            ctx.fillRect(canvasW - (11*thickness)/4, thickness*3, thickness, canvasH - 6*thickness );
+            
+            //Shadow of Move
+            ctx.globalAlpha = game.transparency; 
+            ctx.fillStyle = colors.scrollBoxShadow;
+            ctx.fillRect(canvasW - (12*thickness)/4, thickness*3 + scroll.y, (3*thickness)/2, thickness );
+            
+            //Move
+            //ctx.globalAlpha = game.transparency; 
+            ctx.fillStyle = colors.scrollBox;
+            if(mouseDown == 0)
+                ctx.fillStyle = colors.scrollBoxPressed;
+            ctx.fillRect(canvasW - (12*thickness)/4 - mouseDown*thickness/4, thickness*3 - mouseDown*thickness/4 + scroll.y, (3*thickness)/2, thickness );
+
+        }
+        function drawScore()
+        {
+            ctx.font = '60px Copperplate Gothic Light';
+            ctx.fillStyle = "#FFFFFF";
+            if(score.real <= 0)
+                score.real = 0;
+            if(score.ani > score.real)
+                {
+                    ctx.fillStyle = "#FF0000";
+                    score.ani = score.ani + Math.round((score.real - score.ani)/50 - 1);
+                    if(score.ani < score.real)
+                        score.ani = score.real;
+                }
+            ctx.fillText("Score:", canvasW/2 - 600, canvasH/2);
+            ctx.fillText(score.ani, canvasW/2 - 600, canvasH/2 + 90);
+            if(score.ani <=0)
+                death = true;
+        }
+        function update()
+        {
+            sizeAdjust();
+            moveScroll();
+            moveScroll2();
+            updateStoryEvents();
+            checkDoDeath();
+            chatNewMTransparency();
+            chatNewMAnimation();
+        }
+        /*
+        function updateStoryEvents()
+        {
+			//paste code here
+			
+			
+            //SAMPLE*
+            //answers.openQ = 1;
+            //answers.openA = 0;
+            //createBox("Should we build the flood gate?");
+            //createAnswerBox("Yes.", 1, 1);
+            //createAnswerBox("No.", 1, 2);
+            //*SAMPLE
+        
+            if(death == true)
+                return;
+			
+            if(storyEvents.startStory == false)
+                {
+                    storyEvents.startStory = true;
+                    
+                    answers.openQ = 1;
+                    answers.openA = 0;
+                    createBox("Welcome to: KINGS", "black"); 
+                    createBox("By Deeps.", "Black");
+                    createAnswerBox("PLAY", 1, 1);
+                    
+
+                }
+            if(answers.openQ == 1)
+                {
+                    if(answers.openA == 1)
+                        {
+                            //createInventBox("test gif", '1', 100);
+                            answers.openQ = 2;
+                            answers.openA = 0;
+                            createBox("Hail future king!", "black");
+                            createBox("This is the story panel. Information will appear here and you can click the buttons like the one below to make decisions.", "black");
+                            createAnswerBox("Continue", 2, 1);
+                        }
+                }
+            if(answers.openQ == 2)
+                {
+                    if(answers.openA == 1)
+                        {
+                            answers.openQ = 3;
+                            answers.openA = 0;
+                            createBox("At the top left is your inventory. Items gathered will appear there.", "black");
+                            createBox("At the bottom left are your stats. Your stats will influence story outcomes.", "black");
+                            createAnswerBox("Continue", 3, 1);
+                        }
+                }
+            if(answers.openQ == 3)
+                {
+                    if(answers.openA == 1)
+                        {
+                            answers.openQ = 4;
+                            answers.openA = 0;
+                            
+                            createBox("Today is a day of both mourning and happiness in the kingdom. The old king is dead, but you, his successor, will be crowned as the ruler of this land.", "black");
+                            createBox("Future king... your rise to power is a very epic tale. How exactly did you win the throne?", "black");
+                            createAnswerBox("I stabbed the old king in his sleep.", 4, 1);
+                            createAnswerBox("I challenged the old king to a duel.", 4, 2);
+                            createAnswerBox("I inherited the kingdom from my father.", 4, 3);
+                        }
+                }
+            if(answers.openQ == 4 && answers.openA != 0)
+                {
+                    if(answers.openA == 1)
+                        {
+                            updateStat(2, 15);
+                            updateStat(1, -5);
+                            updateStat(3, -10);
+                            createBox("Ahh yes. Nothing like sneaking into the castle at night, stabbing the king, framing the prince for the crime, and then taking the crown for yourself. What a savage.", "black");
+                        }
+                    if(answers.openA == 2)
+                        {
+                            updateStat(3, 15);
+                            updateStat(0, -10);
+                            createBox("Of course. You knew the king was getting old. It was only a matter of time until he fell.", "black");
+                        }
+                    if(answers.openA == 3)
+                        {
+                            updateStat(0, 25);
+                            createBox("What a privileged child.", "black");
+                        }
+                    answers.openQ = 5;
+                    answers.openA = 0;
+                    createBox("After you get your hands on the crown, what will you rename your kingdom?", "black");
+                    createAnswerBox("Aurora",5 ,1);
+                    createAnswerBox("Devonshire",5 ,2);
+                    createAnswerBox("Gondor",5 ,3);
+                }
+            if(answers.openQ == 5 && answers.openA != 0)
+                {
+                    if(answers.openA == 1)
+                        {
+                            storyVars.kingdomName = "Aurora";
+                        }
+                    if(answers.openA == 2)
+                        {
+                            storyVars.kingdomName = "Devonshire";
+                        }
+                    if(answers.openA == 3)
+                        {
+                            storyVars.kingdomName = "Gondor";
+                        }
+                    createInventBox("Crown of " + storyVars.kingdomName, "crown", 1);
+                    answers.openQ = 6;
+                    answers.openA = 0;
+                    createBox("Interesting choice.", "black");
+                    createBox("Now, nobody ever becomes king simply to 'serve the people.' There is no such thing as a completely fair a just ruler. What exactly do you desire as king?", "black");
+                    createAnswerBox("Become rich.",6 ,1);
+                    createAnswerBox("Become famous.",6 ,2);
+                    createAnswerBox("Conquer the world.",6 ,3);
+                }
+            if(answers.openQ == 6 && answers.openA != 0)
+                {
+                    answers.openQ = 7;
+                    answers.openA = 0;
+                    updateStat(3, -5);
+                    createBox("*sigh* You will soon learn, King of " + storyVars.kingdomName + ", that being king is not that easy; not everyone wants you to remain in power. Remember that if your popularity is low, your subjects will overthrow you. If your sanity is low, you may start having scuicidal thoughts. If you run out of resources, other kingdoms will easily conquer you.", "black");
+                    createBox("...just remember to keep an eye on your stats while pursuing your greedy goals.", "black");
+                    createAnswerBox("Continue", 7, 1);
+                }
+            if(answers.openQ == 7 && answers.openA != 0)
+                {
+                    clearChat();
+                    answers.openQ = 8;
+                    answers.openA = 0;
+                    createBox("Chapter 1: FATE", "black");
+                    createBox("", "black");
+                    createAnswerBox("Continue", 8, 1);
+                }
+				
+        }*/
+        function chatNewMAnimation()
+        {
+            if(chatInfo.yAnimation < chatInfo.lastY)
+                {
+                    chatInfo.yAnimation = chatInfo.yAnimation + game.ani + chatInfo.aniPower;
+                }
+            
+             if(space == true || Math.abs(game.mouseScroll)>1)
+                chatInfo.aniPower = chatInfo.aniPower+10;  
+            else
+                chatInfo.aniPower = 0;
+            
+            if(chatInfo.yAnimation >= chatInfo.lastY)
+                {
+                    chatInfo.yAnimation = chatInfo.lastY;
+                    chatInfo.aniPower = 0;
+                }
+        }
+        function chatNewMTransparency()
+        {
+            for(var i = 0; i < chatInfo.size; i++)
+                {
+                    if(boxes[i].aniTrans < game.transparency)
+                        {
+                            boxes[i].aniTrans = boxes[i].aniTrans + 0.05;
+                        }
+                    else
+                        boxes[i].aniTrans = game.transparency;
+                    if(space == true)
+                        boxes[i].aniTrans = game.transparency;
+                }
+            
+        }
+        function moveScroll()
+        {
+            var thickness = game.thickness;
+            var lowX = canvasW - (11*thickness)/4;
+            var highX = lowX + thickness;
+            //var highY = thickness*3;
+            //var lowY =  canvasH - 6*thickness;
+            //&&mouseY>lowY-10&&mouseY<highY+10
+            if(mouse==true&&mouseX>lowX-50&&mouseX<highX+30)
+                {
+                    scroll.y = mouseY - thickness*3;
+                }
+            if(scroll.y < 0)
+                scroll.y = 0;
+            if(scroll.y > canvasH - 7*thickness)
+                scroll.y = canvasH - 7*thickness;
+            scroll.percent = scroll.y/(canvasH - 7*thickness);
+
+        }
+        function moveScroll2()
+        {
+            var thickness = game.thickness;
+            //var lowX = canvasW - (11*thickness)/4;
+            //var highX = lowX + thickness;
+            var highY = canvasH/2 - (11*thickness)/4;
+            var lowY =  canvasH/2 - (11*thickness)/4 +  thickness;
+            if(mouse==true&&mouseY>lowY-50&&mouseY<highY+50)
+                {
+                    if(mouseX < canvasW/2)
+                        scroll2.x = mouseX - thickness*3;
+                }
+            if(scroll2.x < 0)
+                scroll2.x = 0;
+            if(scroll2.x > canvasW/2 - 7*thickness)
+                scroll2.x = canvasW/2 - 7*thickness;
+            scroll2.percent = scroll2.x/(canvasW/2 - 7*thickness);
+        }
+        function formatText(x)
+        {
+            var thresh = 0;
+            if(boxes[x].type == 'a')
+                thresh = canvasW/2 - 10 * game.thickness;
+            if(boxes[x].type == 'b')
+                thresh = canvasW/2 - 6 * game.thickness;
+           
+            boxes[x].size = 0;
+            var lineBuilder = "";
+            var wordBuilder = "";
+            var count = 0;
+            
+            while(count < boxes[x].text.length)
+                {
+                    wordBuilder = "";
+                    while(boxes[x].text.charAt(count) != ' ' && count < boxes[x].text.length)
+                        {
+                            wordBuilder = wordBuilder + boxes[x].text.charAt(count);
+                            count++;
+                        }
+                    if((lineBuilder.length + wordBuilder.length)*9 > thresh)
+                        {
+                            boxes[x].aText[boxes[x].size] = lineBuilder;
+                            boxes[x].size++;
+                            lineBuilder = wordBuilder + " ";
+                        }
+                    else
+                        lineBuilder = lineBuilder + wordBuilder + " ";
+                    count++;
+                }
+            boxes[x].aText[boxes[x].size] = lineBuilder;
+            boxes[x].size++;
+            
+        }
+        function formatTextItem(x)
+        {
+            var thresh = canvasH/2 - (game.thickness/2)*15;
+            items[x].size = 0;
+            var lineBuilder = "";
+            var wordBuilder = "";
+            var count = 0;
+            
+            while(count < items[x].name.length)
+                {
+                    wordBuilder = "";
+                    while(items[x].name.charAt(count) != ' ' && count < items[x].name.length)
+                        {
+                            wordBuilder = wordBuilder + items[x].name.charAt(count);
+                            count++;
+                        }
+                    if((lineBuilder.length + wordBuilder.length)*9 > thresh)
+                        {
+                            items[x].aName[items[x].size] = lineBuilder;
+                            items[x].size++;
+                            lineBuilder = wordBuilder + " ";
+                        }
+                    else
+                        lineBuilder = lineBuilder + wordBuilder + " ";
+                    count++;
+                }
+            items[x].aName[items[x].size] = lineBuilder;
+            items[x].size++;
+            
+        }
+        function checkDoDeath()
+        {
+//            if(death == true)
+//			{
+//				clearInterval(playLoop);
+//			}
+        }
+        function createBox(textToSee, color)
+        {
+            boxes[chatInfo.size] = new text('b', textToSee, chatInfo.lastY, 0, 0, color);
+            formatText(chatInfo.size);
+            chatInfo.lastY = chatInfo.lastY + 55 + 17 * boxes[chatInfo.size].size + game.thickness;
+            chatInfo.size++;
+            if(scroll.percent > 0.975)
+                scroll.y = canvasH - 7*game.thickness;
+        }
+        function createAnswerBox(textToSee, qN, aN)
+        {
+             boxes[chatInfo.size] = new text('a', textToSee, chatInfo.lastY, qN, aN, "black");
+            formatText(chatInfo.size);
+            chatInfo.lastY = chatInfo.lastY + 55 + 17 * boxes[chatInfo.size].size + game.thickness;
+            chatInfo.size++;
+            if(scroll.percent > 0.975)
+                scroll.y = canvasH - 7*game.thickness;
+        }
+        function resetAllTextMargin()
+        {
+            for(i = 0; i < chatInfo.size; i++)
+                {
+                    formatText(i);
+                    if(i>0)
+                        {
+                            boxes[i].yPos =  boxes[i - 1].yPos + 55 + thickness + boxes[i - 1].size * 17;
+                        }
+                    
+                }
+            chatInfo.lastY = boxes[chatInfo.size - 1].yPos + 55 + thickness + boxes[chatInfo.size - 1].size * 17;
+            chatInfo.yAnimation = chatInfo.lastY;
+			for (var i = 0; i < inventory.size; i++)
+			{
+				formatTextItem(i);
+			}
+        }
+        function createInventBox(inName, inId, count)
+        {
+            var place = 0;
+            while(place < inventory.size && items[place].name != inName)
+                {
+                    place++;
+                }
+            if(place >= inventory.size)
+                {
+                    items[inventory.size] = new inventItem(inName, inId);
+                    formatTextItem(inventory.size);
+                    inventory.size++;
+                }
+            items[place].number = items[place].number + count;
+            
+                    if(count == 1)
+                        createBox("You gained " + count + " " + inName + ".", "green");
+                    else
+                        createBox("You gained " + count + " " + inName + "s.", "green");
+        }
+        function inventoryContains(name, count)
+		{
+			var find = 0;
+			while(find < inventory.size)
+			{
+				if(items[find].name == name)
+					break;
+				find++;
+			}
+			if(find == inventory.size)
+				return false;
+			if(count > items[find].number)
+				return false;
+				
+			return true;
+				
+		}
+        function inventoryRemove(name, count)
+        {
+            if(inventoryContains(name, count) == true)
+                {
+                    var find = 0;
+                    while(find < inventory.size)
+			         {
+                        if(items[find].name == name)
+					       break;
+				        find++;
+                     }
+                    items[find].number = items[find].number - count;
+                    if(items[find].number <= 0)
+                        {
+                            items.splice(find, 1);
+                            inventory.size = inventory.size - 1;
+                        }
+                    if(count == 1)
+                        createBox("You lost " + count + " " + name + ".", "red");
+                    else
+                        createBox("You lost " + count + " " + name + "s.", "red");
+                }
+        }
+        function updateStat(statN, amount)
+        {
+            statsValue[statN] += amount;
+            if(amount>=0)
+                createBox(stats[statN] + " +" + amount, "green");
+            else
+                createBox(stats[statN] + " " + amount, "red");
+        }
+        function clearChat()
+        {
+            chatInfo.size = 0;
+            chatInfo.lastY = 0;
+            chatInfo.mouseOn = -1;
+            chatInfo.yAnimation = 0;
+            chatInfo.aniPower = 0;
+            //chatInfo = {size: 0, lastY: 0, mouseOn : -1, yAnimation : 0, aniPower : 0};
+        }
+		function play()
+        {
+            scroll.y = canvasH - 7*game.thickness;
+            playLoop = setInterval(function() {draw();} , 1000/fps);
+           
+            
+        }
+        document.onkeydown =
+            function mRect(e) 
+            {
+                e = e || window.event;
+
+                if (e.keyCode == '68' )
+                {
+                    right = true;
+                }
+                if (e.keyCode == '65' )
+                {
+                    left = true;
+                }
+                if (e.keyCode == '83' )
+                {
+                    up = true;
+                }
+                if (e.keyCode == '87' )
+                {
+                    down = true;             
+                }
+                if (e.keyCode == '32' )
+                {
+                    space = true;
+                    game.ani = 30;
+					//location.reload();
+                }
+            }
+         document.onkeyup =
+            function mRect(e) 
+            {
+                e = e || window.event;
+                if (e.keyCode == '68' )
+                {
+                    right = false;
+                }
+
+                if (e.keyCode == '65' )
+                {
+                    left = false;
+                }
+                if (e.keyCode == '83' )
+                {
+                    up = false;
+                }
+
+                if (e.keyCode == '87' )
+                {
+                    down = false;
+                }
+                if (e.keyCode == '32' )
+                {  
+                    space = false;
+                    game.ani = 3;
+                }
+            }
+        function sizeAdjust()
+        {
+            var change = false;
+                canvas = document.getElementById("mycanvas");
+                canvasW = window.innerWidth 
+                    || document.documentElement.clientWidth
+                    || document.body.clientWidth; 
+                canvasH = window.innerHeight
+                    || document.documentElement.clientHeight
+                    || document.body.clientHeight; 
+                canvasH = canvasH - 15;
+                canvasW = canvasW - 5;
+                canvasH = canvasH - (canvasH % 2);
+                canvasW = canvasW - (canvasW % 2);
+                //if(canvasW > 1500)
+                    //canvasW = 1500;
+                //if(canvasH > 800)
+                    //canvasH = 800;
+            if(canvas.width != canvasW)
+                {
+                    canvas.width = canvasW;
+                    change = true;
+                }
+            if(canvas.height != canvasH)
+                {
+                    canvas.height = canvasH;
+                    change = true;
+                }
+            if(change == true && chatInfo.size > 0)
+                {
+                     resetAllTextMargin();
+                }
+        }
+        function drawTitle()
+		{
+			//ctx.font = '50px Comic Sans MS, cursive';
+            ctx.font = '40px Copperplate Gothic Light';
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillText("KINGS", canvasW/2 - 500, canvasH/2 - 15);
+			ctx.font = '20px Copperplate Gothic Light';
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillText("(Press Anywhere to Continue)", canvasW/2 - 500, canvasH/2 + 50);
+		}
+		window.onload =
+            function Game() 
+            {
+                sizeAdjust();
+                document.body.style.marginTop = 0;
+                document.body.style.marginLeft = 0;
+                document.body.style.marginBottom = 0;
+                document.body.style.marginUp = 0;
+
+                this.ctx = document.getElementById("mycanvas").getContext("2d");
+                drawTitle();
+
+                
+            }
+         document.onmousedown = 
+            function mousedown(e) 
+            {
+                e = e || window.event;
+                mouse = true;
+				if(game.start == 0)
+					{
+						play();
+						game.start++;
+					}
+            }
+        document.onmouseup = 
+            function mouseup(e) 
+            {
+                e = e || window.event;
+                mouse = false;
+            }
+        window.addEventListener('mousemove', function (e) {
+            canvas = document.getElementById("mycanvas");
+            mouseX = e.pageX;
+            mouseY = e.pageY;
+        })      
+        document.onwheel = function detectWheel(e) 
+        {
+            e = e || window.event;
+            var thickness = game.thickness;
+            if(mouseX>canvasW/2)
+                {
+                    scroll.y = scroll.y + 5*Math.abs((e.deltaY)/125)*((e.deltaY)/125)*5;
+                }
+            if(scroll.y < 0)
+                scroll.y = 0;
+            if(scroll.y > canvasH - 7*thickness)
+                scroll.y = canvasH - 7*thickness;
+            if(mouseX<canvasW/2&&mouseY<canvasH/2)
+                {
+                    scroll2.x = scroll2.x + 5*Math.abs((e.deltaY)/125)*((e.deltaY)/125)*5;
+                }
+            if(scroll2.x < 0)
+                scroll2.x = 0;
+            if(scroll2.x > canvasW/2 - 7*thickness)
+                scroll2.x = canvasW/2 - 7*thickness;
+            
+            game.mouseScroll = Math.abs((e.deltaY)/125)*((e.deltaY)/125);
+        }
+
+    </script>
+
+</head>
+
+<body style="background-color:black" >
+    
+
+    <canvas id="mycanvas"  height="600" width="500" ></canvas>
+    <img hidden id="0" width="0" height="0" src="medical.png" alt="what?">
+    <img hidden id="crown" width="0" height="0" src="crown.png" alt="what?">
+    <img hidden id="1" src="test.gif" rel:animated_src="test.gif"
+ width="0" height="0" rel:auto_play="1" rel:rubbable="1">
+
+    
+</body>
+
+</html>

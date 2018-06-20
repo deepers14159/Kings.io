@@ -1,0 +1,280 @@
+//General Stuff
+Popularity Sanity Cunning Honor Money Army
+"crown"
+//
+Text: "Welcome to: KINGS" "By Deeps."
+Answer: "Play"
+{
+    
+}
+
+Text: "Hail future king!" "This is the story panel. Information will appear here and you can click the buttons like the one below to make decisions."
+Answer:  "Continue"
+{
+
+}
+
+Text: "At the top left is your inventory. Items gathered will appear there." "At the bottom left are your stats. Your stats will influence story outcomes."
+Answer: "Continue"
+{
+
+}
+
+Text: "Future king... your rise to power is a very epic tale. How exactly did you win the throne?"
+Answer: "I stabbed the old king in his sleep."
+{
+    Stat: Cunning 15
+    Stat: Sanity -5
+    Stat: Honor -10
+    Text: "Ahh yes. Nothing like sneaking into the castle at night, stabbing the king, framing the prince for the crime, and then taking the crown for yourself. What a savage."
+    Answer: "Continue"
+    {
+    
+    }
+}
+Answer: "I challenged the old king to a duel."
+{
+    Stat: Honor 15
+    Stat: Popularity -10
+    Text: "Of course. You knew the king was getting old. It was only a matter of time until he fell."
+    Answer: "Continue"
+    {
+    
+    }
+}
+Answer: "I inherited the kingdom from my father."
+{
+    Stat: Popularity 15
+    Text: "What a privileged child."
+    Answer: "Continue"
+    {
+    
+    }
+}
+
+Text: "After you get your hands on the crown, what will you rename your kingdom?"
+Answer: "Aurora"
+{
+    Var: kingdomName "Aurora"
+}
+Answer: "Devonshire"
+{
+    Var: kingdomName "Devonshire"
+}
+Answer: "Gondor"
+{
+    Var: kingdomName "Gondor"
+    Stat: Popularity -15
+    Text: "Turns out nobody likes that name."
+    Answer: "Continue"
+    {
+         
+    }
+}
+Item: "Crown of [kingdomName]" "crown" 1
+Text: "Interesting choice." "Now, nobody ever becomes king simply to 'serve the people.' There is no such thing as a completely fair a just ruler. What exactly do you desire as king?"
+Answer: "Become rich."
+{
+
+}
+Answer: "Become famous."
+{
+
+}
+Answer: "Conquer the world."
+{
+
+}
+    
+Stat: Honor -5
+Text: "*sigh* You will soon learn, King of [kingdomName], that being king is not that easy; not everyone wants you to remain in power. Remember that if your popularity is low, your subjects will overthrow you. If your sanity is low, you may start having suicidal thoughts. If you run out of resources, other kingdoms will easily conquer you.""...just remember to keep an eye on your stats while pursuing your greedy goals."
+Answer: "Next Chapter"
+{
+    Clear:
+}
+
+Text: "Chapter I: FIT TO BE A KING"
+Answer: "Continue"
+{
+
+}
+
+Text: "Your Highness, there seems to be a big problem. There are some people who think that you are not fit to be king." "These rebels have united under the leadership of a fearless fighter. What was their name again?"
+Answer: "Madame Uglyface"
+{
+    Var: opponentName "Madame Uglyface"
+}
+Answer: "Sir Yellowbeard"
+{
+    Var: opponentName "Sir Yellowbeard"
+}
+Answer: "Sir Bighat"
+{
+    Var: opponentName "Sir Bighat"
+}
+
+Text: "Oh that's right I remember now. Well it seems that [opponentName] has challenged you to a duel. Do you accept the challenge?"
+Answer: "Yes, it is only honorable to do so"
+{
+    Stat: Honor 10
+}
+Answer: "There is no need, I have the support of the people" (statsValue[0] > 50) "You can't do that. Your popularity is too low."
+{
+
+}
+Answer: "But what if I lose?"
+{
+    Stat: Honor -10
+    Text: "You must accept the duel. It will be your death if you do not."
+    Answer: "Continue"
+    {
+    
+    }
+}
+Text: "The time has come for you to prepare for the duel; you must secure your victory and your title to kingship. What will you do?"
+Answer: "Hire someone to 'hinder' [opponentName]." (statsValue[4] >= 2000) "You can't do that. You do not have enough money."
+{
+    Stat: Money -2000
+    Stat: Honor -10
+    Text: "It seems that [opponentName] canceled the duel because they broke their leg in an 'accident'."
+    Answer: "Continue"
+    {
+    
+    }
+}
+Answer: "Spread rumors about [opponentName]." (true == true) "why?"
+{
+    Stat: Popularity 10
+    Stat: Honor -10
+    Text: "It seems that [opponentName] canceled the duel because they lost almost all their public support."
+    Answer: "Continue"
+    {
+    
+    }
+}
+Answer: "Practice my combat skills."
+{
+    Stat: Sanity 5
+    Stat: Cunning 5
+    Stat: Honor 5
+    Text: "Your training was a success! I believe you will be ready for the duel"
+    Answer: "Continue"
+    {
+    
+    }
+    Text: "Today is the day of the duel. You stand in front of [opponentName], and the fight is about to begin. Will you make the first move?"
+    Answer: "Make the first move."
+    {
+        Text: "You rush at [opponentName] but don't notice the banana peel on the ground. You trip, fall, and are easily defeated. YOU LOSE."
+        Answer: "Start Over"
+        {
+            Reload:
+        }
+    }
+    Answer: "Wait and let your opponent make the first move."
+    {
+        Text: "You wait patiently. [opponentName] rushes at you but doesn't notice the banana peel on the ground. They trip, falls, and you easily defeat them."
+        Answer: "Continue"
+        {
+        
+        }
+    }
+}
+Text: "Congratulations you dealt with the problem."
+Answer: "Next Chapter"
+{
+    Clear:
+}
+Text: "Chapter II: Some time passes."
+Answer: "Continue"
+{
+
+}
+Text: "Now king, you make be popular amongst the people, but do they really support you? I have a couple of suggestions that could help."
+Answer: "Build a statue of yourself in the middle of the kingdom."
+{
+    Text: "Sounds good. What should it be made of?"
+    Answer: "Wood" (statsValue[4] >= 3000) "You can't do that. You do not have enough money."
+    {
+        Stat: Popularity 5
+        Stat: Money -3000
+    }
+    Answer: "Marble" (statsValue[4] >= 5000) "You can't do that. You do not have enough money."
+    {
+        Stat: Popularity 15
+        Stat: Money -5000
+    }
+    Answer: "Gold" (statsValue[4] >= 10000) "You can't do that. You do not have enough money."
+    {
+        Stat: Popularity 25
+        Stat: Money -10000
+    }
+    Text: "I hope nobody steals it..."
+    Answer: "Continue"
+    {
+
+    }
+}
+Answer: "I have heard that some people hold secret meetings as part of a resistance group in support of  [opponentName] and his followers. You could publicly humiliate them." (true == true) "Yep"
+{
+    Text: "Sounds good. I think you should publish something in the newspaper. What will you say?"
+    Answer: "Insult their faces."
+    {
+        Stat: Popularity 5
+    }
+    Answer: "Insult their moms."
+    {
+        Stat: Popularity 10
+    }
+    Answer: "Insult their education."
+    {
+        Stat: Popularity -5
+    }
+    Text: "Sure."
+    Answer: "Continue"
+    {
+
+    }
+}
+Text: "On to the next chapter!"
+Answer: "Next Chapter"
+{
+    Clear:
+}
+Text: "Chapter III: The end as you know it."
+Answer: "Continue"
+{
+    
+}
+Stat: Army -20000
+Text: "Well it turns out that [opponentName] is leading a rebellion against you! A huge mob has formed and they are heading this way, and even some of the soldiers in your army have joined them. What are you going to do?"
+Answer: "Send the rest of the army after them." (statsValue[0] > 60) "You can't do that. You do not have the support of the people, so the army will not follow your orders."
+{
+    Stat: Army -20000
+}
+Answer: "Try to talk with them" 
+{
+    Text: "What will you do?"
+    Answer: "Give a speech"  (statsValue[0] > 90) "You can't do that. You do not have the support of the people."
+    {
+         Stat: Popularity -40
+    }
+    Answer: "There is nothing left to do... YOU LOSE. Start Over?"
+    {
+        Reload:
+    }
+}
+Answer: "No options left..."
+{
+    Text: "Within a few minutes the mob arrives at the palace and you are killed. YOU LOSE"
+    Answer: "Start Over"
+    {
+        Reload:
+    }
+}
+Text: "Well thankfully that worked and you stopped the mob from taking your life." "Sadly [opponentName] has led his followers to secede from the kingdom, and they have formed a new nation to the south." "For now, however, you can rest."
+Answer: "TO BE CONTINUED"
+{
+
+}
+End
